@@ -24,6 +24,31 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # =================================================
+# 2. CONFIGURATION API (REST FRAMEWORK) - CRITIQUE
+# =================================================
+# C'est souvent l'absence de ceci qui cause les erreurs 500 sur fields.json
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
+    # --- AJOUTS CRITIQUES POUR EVITER LES ERREURS 500 ---
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 250,
+    'EXCEPTION_HANDLER': 'temba.api.support.temba_exception_handler',
+    # ----------------------------------------------------
+    'DATE_INPUT_FORMATS': ['iso-8601', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%d'],
+    'DATETIME_INPUT_FORMATS': ['iso-8601', '%Y-%m-%dT%H:%M:%S.%fZ'],
+    'DATE_FORMAT': 'iso-8601',
+    'DATETIME_FORMAT': 'iso-8601',
+}
+# =================================================
 # 2. BASE DE DONNÉES
 # =================================================
 DATABASES = {
@@ -82,3 +107,4 @@ MAILROOM_AUTH_TOKEN = os.environ.get("MAILROOM_AUTH_TOKEN")
 
 MIDDLEWARE = ("temba.middleware.ExceptionMiddleware",) + MIDDLEWARE
 warnings.filterwarnings("error", r"DateTimeField .* received a naive datetime", RuntimeWarning, r"django\.db\.models\.fields")
+HELP_URL = None

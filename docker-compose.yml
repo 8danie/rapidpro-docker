@@ -90,11 +90,6 @@ services:
 
   rapidpro:
     image: nyaruka/rapidpro:stable
-    restart: unless-stopped
-    build:
-      context: ./rapidpro/
-      args:
-        - RAPIDPRO_TAG=v10.2.1
     command: ["webapp"]
     depends_on:
       postgres:
@@ -133,10 +128,6 @@ services:
   celery:
     image: nyaruka/rapidpro:stable
     restart: unless-stopped
-    build:
-      context: ./rapidpro/
-      args:
-        - RAPIDPRO_TAG=v10.2.1
     command: ["celery"]
     depends_on:
       rapidpro:
