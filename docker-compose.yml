@@ -5,7 +5,7 @@ services:
     image: nginx:alpine
     volumes:
       - "./nginx/default.conf:/etc/nginx/conf.d/default.conf"
-      - static_content:/rapidpro/static
+      - ./public_assets:/rapidpro/static
     ports:
       - 81:80
 
@@ -105,7 +105,7 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - static_content:/rapidpro/sitestatic
+      - ./public_assets:/rapidpro/sitestatic
       - ./settings_fixed.py:/rapidpro/temba/settings.py
     environment:
       DATABASE_URL: postgres://temba:tembatemba@postgres:5432/temba
