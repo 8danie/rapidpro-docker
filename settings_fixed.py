@@ -24,9 +24,27 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # =================================================
-# 2. CONFIGURATION API (REST FRAMEWORK) - CRITIQUE
+# 2. BASE DE DONNÉES (CORRECTION ERREUR READONLY)
 # =================================================
-# C'est souvent l'absence de ceci qui cause les erreurs 500 sur fields.json
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "temba",
+        "USER": "temba",
+        "PASSWORD": "tembatemba",
+        "HOST": "postgres",
+        "PORT": "5432",
+        "ATOMIC_REQUESTS": True, # Recommandé
+    }
+}
+
+# --- LA LIGNE QUI SAUVE TOUT ---
+# On dit à RapidPro d'utiliser la même base pour la lecture et l'écriture
+DATABASES["readonly"] = DATABASES["default"]
+
+# =================================================
+# 3. CONFIGURATION API (REST FRAMEWORK)
+# =================================================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.SessionAuthentication',
@@ -38,59 +56,35 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
-    # --- AJOUTS CRITIQUES POUR EVITER LES ERREURS 500 ---
+    # Pagination
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 250,
+    # Gestionnaire d'erreurs
     'EXCEPTION_HANDLER': 'temba.api.support.temba_exception_handler',
-    # ----------------------------------------------------
+    # Dates
     'DATE_INPUT_FORMATS': ['iso-8601', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%d'],
     'DATETIME_INPUT_FORMATS': ['iso-8601', '%Y-%m-%dT%H:%M:%S.%fZ'],
     'DATE_FORMAT': 'iso-8601',
     'DATETIME_FORMAT': 'iso-8601',
 }
-# =================================================
-# 2. BASE DE DONNÉES
-# =================================================
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "temba",
-        "USER": "temba",
-        "PASSWORD": "tembatemba",
-        "HOST": "postgres",
-        "PORT": "5432",
-    }
-}
 
 # =================================================
-# 3. GESTION DES COMPTES (SANS INSCRIPTION)
+# 4. GESTION DES COMPTES
 # =================================================
-# --- C'EST ICI QUE VOUS DÉSACTIVEZ L'INSCRIPTION ---
-# Cela supprime le formulaire d'inscription pour le public.
-# Seuls les admins peuvent créer des comptes.
 ACCOUNT_ALLOW_REGISTRATION = False
-
-# --- NE SUPPRIMEZ PAS CES LIGNES ---
-# Elles sont nécessaires pour que Django démarre sans erreur,
-# même si l'inscription est désactivée.
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_EMAIL_VERIFICATION = "none"
-
-# Connexion/Déconnexion
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
 
 # =================================================
-# 4. TÂCHES CELERY (CORRECTIF DEADLOCK)
+# 5. DIVERS
 # =================================================
-# IMPORTANT : On passe à False pour éviter le blocage au démarrage (DeadlockError)
-# Les tâches passeront par Redis au lieu de bloquer le thread principal.
-CELERY_TASK_ALWAYS_EAGER = False
-CELERY_TASK_EAGER_PROPAGATES = False
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
 
-# =================================================
-# 5. EMAILS & FICHIERS
-# =================================================
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = 'localhost'
 SEND_EMAILS = False
@@ -99,12 +93,9 @@ COMPRESS_ENABLED = False
 COMPRESS_OFFLINE = False
 STATIC_URL = "/static/"
 
-# =================================================
-# 6. DIVERS
-# =================================================
 MAILROOM_URL = os.environ.get("MAILROOM_URL", "http://localhost:8090")
 MAILROOM_AUTH_TOKEN = os.environ.get("MAILROOM_AUTH_TOKEN")
+HELP_URL = None
 
 MIDDLEWARE = ("temba.middleware.ExceptionMiddleware",) + MIDDLEWARE
 warnings.filterwarnings("error", r"DateTimeField .* received a naive datetime", RuntimeWarning, r"django\.db\.models\.fields")
-HELP_URL = None
