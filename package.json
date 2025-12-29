@@ -1,0 +1,12 @@
+{
+    "name": "rapidpro-docker-test",
+    "version": "1.0.0",
+    "description": "Test suite for RapidPro Docker setup",
+    "main": "test/main.js",
+    "scripts": {
+        "test": "node test/main.js"
+    },
+    "dependencies": {
+        "puppeteer": "^22.0.0"
+    }
+}

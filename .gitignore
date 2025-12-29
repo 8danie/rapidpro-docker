@@ -1,0 +1,12 @@
+.DS_Store
+public_assets
+cookies.txt
+create_admin.sh
+create_user.sh
+fix_email.py
+force_console.py
+force_console_email.py
+install.sh
+settings_fixed.py
+docker-compose.yml
+.env

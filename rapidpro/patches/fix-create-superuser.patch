@@ -1,0 +1,38 @@
+diff --git a/temba/users/models.py b/temba/users/models.py
+--- a/temba/users/models.py
++++ b/temba/users/models.py
+@@ -22,7 +22,7 @@
+     def get_by_natural_key(self, email: str):
+         return self.get(**{f"{self.model.USERNAME_FIELD}__iexact": email})
+ 
+-    def create_user(self, email: str, password: str, **extra_fields):
++    def create_user(self, email: str, password: str | None = None, **extra_fields):
+         """
+         Create and save a user with the given email and password.
+         """
+@@ -32,6 +32,25 @@
+         user.save()
+         return user
+ 
++    def create_superuser(self, email: str, password: str | None = None, **extra_fields):
++        """Creates and saves a superuser.
++
++        Django's built-in `UserManager.create_superuser` signature expects a `username`
++        positional argument. Our user model uses `email` as `USERNAME_FIELD`, so we
++        override to match what `createsuperuser` passes.
++        """
++
++        extra_fields.setdefault("is_staff", True)
++        extra_fields.setdefault("is_superuser", True)
++        extra_fields.setdefault("is_active", True)
++
++        if extra_fields.get("is_staff") is not True:
++            raise ValueError("Superuser must have is_staff=True.")
++        if extra_fields.get("is_superuser") is not True:
++            raise ValueError("Superuser must have is_superuser=True.")
++
++        return self.create_user(email, password, **extra_fields)
++
+     def create_system_user(self):
+         """
+         Creates the system user
