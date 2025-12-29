@@ -1,0 +1,245 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - "./nginx/default.conf:/etc/nginx/conf.d/default.conf"
+      - ./public_assets:/rapidpro/static
+    ports:
+      - 81:80
+
+  postgres:
+    image: postgis/postgis:15-3.4-alpine
+    restart: unless-stopped
+    volumes:
+      - ./postgres/init_dbs.sql:/docker-entrypoint-initdb.d/dev_dbs.sql
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    env_file:
+      - .env
+    environment:
+      OSTGRES_PASSWORD: tembatemba
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temba"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elastic:
+    image: elasticsearch:8.14.0
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ingest.geoip.downloader.enabled: "false"
+      logger.level: INFO
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    healthcheck:
+      test: curl -s http://localhost:9200 >/dev/null || exit 1
+      interval: 10s
+      timeout: 5s
+
+  valkey:
+    image: valkey/valkey:8.0-alpine
+    command: valkey-server --save 60 1 --loglevel warning
+    volumes:
+      - valkey:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+
+  dynamo:
+    image: amazon/dynamodb-local
+    command: "-jar DynamoDBLocal.jar -sharedDb -port 6000"
+    volumes:
+      - dynamo:/home/dynamodblocal/data
+    ports:
+      - "6000:6000"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -v http://dynamo:6000" ]
+      interval: 10s
+      timeout: 5s
+    restart: always
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: tembatemba
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 60s
+
+  rapidpro:
+    image: nyaruka/rapidpro:stable
+    command: ["webapp"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elastic:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      dynamo:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./public_assets:/rapidpro/sitestatic
+      - ./settings_fixed.py:/rapidpro/temba/settings.py
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://temba:temba@postgres:5432/temba
+      REDIS_URL: valkey://valkey:6379/0
+      REMOTE_CONTAINERS: "true"
+      MAILROOM_URL: http://mailroom:8090
+      MAILROOM_AUTH_TOKEN: topsecret
+      EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+    healthcheck:
+      test: curl -s http://localhost:8000 >/dev/null || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 300s
+
+  celery:
+    image: nyaruka/rapidpro:stable
+    restart: unless-stopped
+    command: ["celery"]
+    depends_on:
+      rapidpro:
+        condition: service_healthy
+    volumes:
+      # AJOUTEZ CETTE LIGNE ICI AUSSI :
+      - ./settings_fixed.py:/rapidpro/temba/settings.py
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://temba:temba@postgres:5432/temba
+      REDIS_URL: valkey://valkey:6379/0
+      REMOTE_CONTAINERS: "true"
+      MAILROOM_URL: http://mailroom:8090
+      MAILROOM_AUTH_TOKEN: topsecret
+      DEFAULT_FROM_EMAIL: server@rapidpro.local
+      # Email settings (defaults are safe for dev; override via a .env file)
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+
+  mailroom:
+    image: nyaruka/mailroom:stable
+    build: 
+      context: https://github.com/nyaruka/mailroom.git#v10.2.0
+      dockerfile: Dockerfile
+    depends_on:
+      rapidpro:
+        condition: service_healthy
+    ports:
+      - "8090:8090"
+    env_file:
+      - .env
+    environment:
+      MAILROOM_ADDRESS: 0.0.0.0
+      MAILROOM_DB: postgres://temba:temba@postgres:5432/temba?sslmode=disable
+      MAILROOM_VALKEY: valkey://valkey:6379/15
+      MAILROOM_ELASTIC: http://elastic:9200
+      MAILROOM_DOMAIN: ${MAILROOM_DOMAIN:-host.docker.internal}
+      MAILROOM_ATTACHMENT_DOMAIN: ${MAILROOM_ATTACHMENT_DOMAIN:-host.docker.internal}
+      MAILROOM_DISALLOWED_NETWORKS: 6.6.6.6
+      MAILROOM_AUTH_TOKEN: topsecret
+      MAILROOM_COURIER_AUTH_TOKEN: topsecret
+      MAILROOM_AWS_ACCESS_KEY_ID: root
+      MAILROOM_AWS_SECRET_ACCESS_KEY: tembatemba
+      MAILROOM_DYNAMO_ENDPOINT: http://dynamo:6000
+      MAILROOM_DYNAMO_TABLE_PREFIX: Temba
+      MAILROOM_S3_ENDPOINT: http://minio:9000
+      MAILROOM_S3_SESSIONS_BUCKET: temba-sessions
+      MAILROOM_S3_ATTACHMENTS_BUCKET: temba-attachments
+      MAILROOM_S3_MINIO: "true"
+      MAILROOM_LOG_LEVEL: info
+
+  courier:
+    image: nyaruka/courier:stable
+    build: 
+      context: https://github.com/nyaruka/courier.git#v10.2.0
+      dockerfile: Dockerfile
+    depends_on:
+      rapidpro:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      COURIER_ADDRESS: 0.0.0.0
+      COURIER_DB: postgres://temba:temba@postgres:5432/temba?sslmode=disable
+      COURIER_VALKEY: valkey://valkey:6379/15
+      COURIER_DOMAIN: ${COURIER_DOMAIN:-host.docker.internal}
+      COURIER_BASE_URL: ${COURIER_BASE_URL:-https://host.docker.internal}
+      COURIER_DISALLOWED_NETWORKS: 6.6.6.6
+      COURIER_AUTH_TOKEN: topsecret
+      COURIER_AWS_ACCESS_KEY_ID: root
+      COURIER_AWS_SECRET_ACCESS_KEY: tembatemba
+      COURIER_DYNAMO_ENDPOINT: http://dynamo:6000
+      COURIER_DYNAMO_TABLE_PREFIX: Temba
+      COURIER_S3_ENDPOINT: http://minio:9000
+      COURIER_S3_ATTACHMENTS_BUCKET: temba-attachments
+      COURIER_S3_MINIO: "true"
+      COURIER_LOG_LEVEL: info
+
+  indexer:
+    image: nyaruka/indexer:stable
+    build: 
+      context: https://github.com/nyaruka/rp-indexer.git#v10.2.0
+      dockerfile: Dockerfile
+    depends_on:
+      rapidpro:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      INDEXER_DB: postgres://temba:temba@postgres:5432/temba?sslmode=disable
+      INDEXER_ELASTIC_URL: http://elastic:9200
+      INDEXER_LOG_LEVEL: info
+
+  kannel:
+    build: ./kannel  # On construit localement
+    container_name: rapidpro_kannel
+    restart: unless-stopped
+    ports:
+      - "13000:13000"
+      - "13013:13013"
+    volumes:
+      - ./kannel/kannel.conf:/etc/kannel/kannel.conf
+    networks:
+      - default
+
+volumes:
+  postgres:
+  elastic:
+  valkey:
+  dynamo:
+  minio:
+    driver: local
+  static_content:
