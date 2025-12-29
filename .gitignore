@@ -8,5 +8,4 @@ force_console.py
 force_console_email.py
 install.sh
 settings_fixed.py
-docker-compose.yml
 .env
