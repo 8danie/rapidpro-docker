@@ -8,7 +8,7 @@ services:
       - 80:80
 
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     volumes:
       - ./postgres/init_dbs.sql:/docker-entrypoint-initdb.d/dev_dbs.sql
       - postgres:/var/lib/postgresql/data
@@ -81,7 +81,7 @@ services:
     build:
       context: ./rapidpro/
       args:
-        - RAPIDPRO_TAG=v10.2.1
+        - RAPIDPRO_TAG=v26.0.0
     command: ["webapp"]
     depends_on:
       postgres:
@@ -111,7 +111,7 @@ services:
     build:
       context: ./rapidpro/
       args:
-        - RAPIDPRO_TAG=v10.2.1
+        - RAPIDPRO_TAG=v26.0.0
     command: ["celery"]
     depends_on:
       rapidpro:
@@ -123,7 +123,7 @@ services:
   mailroom:
     image: nyaruka/mailroom:stable
     build: 
-      context: https://github.com/nyaruka/mailroom.git#v10.2.0
+      context: https://github.com/nyaruka/mailroom.git#v26.0.0
       dockerfile: Dockerfile
     depends_on:
       rapidpro:
@@ -153,7 +153,7 @@ services:
   courier:
     image: nyaruka/courier:stable
     build: 
-      context: https://github.com/nyaruka/courier.git#v10.2.0
+      context: https://github.com/nyaruka/courier.git#v26.0.1
       dockerfile: Dockerfile
     depends_on:
       rapidpro:
@@ -180,7 +180,7 @@ services:
   indexer:
     image: nyaruka/indexer:stable
     build: 
-      context: https://github.com/nyaruka/rp-indexer.git#v10.2.0
+      context: https://github.com/nyaruka/rp-indexer.git#v26.0.1
       dockerfile: Dockerfile
     depends_on:
       rapidpro:
