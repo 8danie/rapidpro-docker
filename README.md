@@ -3,6 +3,9 @@
 [![tag](https://img.shields.io/github/tag/nyaruka/rapidpro-docker.svg)](https://github.com/nyaruka/rapidpro-docker/releases)
 [![Build Status](https://github.com/nyaruka/rapidpro-docker/workflows/CI/badge.svg)](https://github.com/nyaruka/rapidpro-docker/actions?query=workflow%3ACI)
 
+> [!IMPORTANT]  
+> These example containers are for development and documentation purposes only, and are not intended for production deployments.
+
 Docker compose for stable release versions of RapidPro.
 
 Includes:
@@ -11,13 +14,10 @@ Includes:
  - Courier ([License](https://github.com/nyaruka/courier/blob/main/LICENSE))
  - Indexer ([License](https://github.com/nyaruka/rp-indexer/blob/main/LICENSE))
  - nginx
- - PostgreSQL (postgis)
+ - PostgreSQL
  - Elasticsearch
  - Valkey
- - DynamoDB local
- - Minio (S3 emulator)
-
-These example containers are for development purposes only and are *not intended for production deployments*.
+ - Localstack (provides DynamoDB, S3 and Cloudwatch)
 
 ## Usage
 
