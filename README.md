@@ -11,14 +11,6 @@ Includes:
  - Courier ([License](https://github.com/nyaruka/courier/blob/main/LICENSE))
  - Indexer ([License](https://github.com/nyaruka/rp-indexer/blob/main/LICENSE))
  - nginx
- - PostgreSQL (postgis)
- - Elasticsearch
- - Valkey
- - DynamoDB local
- - Minio (S3 emulator)
-
-These example containers are for development purposes only and are *not intended for production deployments*.
-
 ## Usage
 
 ```
